@@ -243,6 +243,11 @@ const Cart = () => {
                   ${Number(cart.total).toFixed(2)}
                 </Text>
               </HStack>
+              <Box mt={2} p={3} bg="gray.50" borderRadius="md">
+                <Text color="gray.600" fontSize="sm">
+                  <strong>Payment Method:</strong> Cash on Delivery (COD)
+                </Text>
+              </Box>
             </VStack>
           </Box>
 

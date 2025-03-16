@@ -61,21 +61,26 @@ class CartItem(models.Model):
         return f"{self.quantity} x {self.product.name} in Cart {self.cart.session_id}"
 
 class Order(models.Model):
-    STATUS_CHOICES = [
+    STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('processing', 'Processing'),
         ('shipped', 'Shipped'),
         ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
-    ]
+    )
 
-    order_number = models.CharField(max_length=50, unique=True)
+    PAYMENT_CHOICES = (
+        ('cod', 'Cash on Delivery'),
+    )
+
+    order_number = models.CharField(max_length=20, unique=True)
     user_id = models.CharField(max_length=100, null=True, blank=True)  # Supabase user ID
     user_email = models.EmailField(null=True, blank=True)  # Supabase user email
     full_name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20)
+    phone = models.CharField(max_length=15)
     address = models.TextField()
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=50, choices=PAYMENT_CHOICES, default='cod')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

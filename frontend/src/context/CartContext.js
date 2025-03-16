@@ -78,13 +78,6 @@ export const CartProvider = ({ children }) => {
     if (!checkAuth()) return { success: false, requiresAuth: true };
 
     try {
-      // Get CSRF token before making the request
-      const csrfResponse = await axios.get('http://localhost:8000/api/csrf/', {
-        withCredentials: true
-      });
-      
-      const csrfToken = csrfResponse.data.csrfToken;
-      
       const response = await axios.post(
         'http://localhost:8000/api/cart/add_item/',
         { 
@@ -96,8 +89,7 @@ export const CartProvider = ({ children }) => {
         { 
           withCredentials: true,
           headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'Content-Type': 'application/json'
           }
         }
       );

@@ -18,9 +18,7 @@ from django.utils.decorators import method_decorator
 @ensure_csrf_cookie
 def csrf(request):
     token = get_token(request)
-    response = JsonResponse({'csrfToken': token})
-    response['X-CSRFToken'] = token
-    return response
+    return JsonResponse({'csrfToken': token})
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -78,10 +76,6 @@ class CartViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def add_item(self, request):
         try:
-            # Print debug information
-            print("Headers:", request.headers)
-            print("CSRF Token:", request.META.get('HTTP_X_CSRFTOKEN'))
-            
             product_id = request.data.get('product_id')
             quantity = int(request.data.get('quantity', 1))
             user_id = request.data.get('user_id')

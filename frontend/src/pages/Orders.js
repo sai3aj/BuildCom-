@@ -137,6 +137,11 @@ const Orders = () => {
                     <Text whiteSpace="pre-wrap">{order.address}</Text>
                   </Box>
 
+                  <Box>
+                    <Text fontWeight="bold">Payment Method:</Text>
+                    <Text>Cash on Delivery (COD)</Text>
+                  </Box>
+
                   <TableContainer>
                     <Table variant="simple">
                       <Thead>
