@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from './AuthContext';
+import { useToast } from '@chakra-ui/react';
 
 // Configure axios defaults
 axios.defaults.withCredentials = true;
@@ -8,141 +10,177 @@ axios.defaults.xsrfHeaderName = 'X-CSRFToken';
 
 const CartContext = createContext();
 
-export const useCart = () => {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
-};
-
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { user } = useAuth();
+  const toast = useToast();
 
-  // Get CSRF token first
-  const getCSRFToken = async () => {
-    try {
-      await axios.get('http://localhost:8000/api/csrf/');
-    } catch (err) {
-      console.error('Error fetching CSRF token:', err);
+  const checkAuth = () => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in or sign up to continue',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return false;
     }
+    return true;
   };
 
   const fetchCart = async () => {
     try {
-      setLoading(true);
       const response = await axios.get('http://localhost:8000/api/cart/', {
-        withCredentials: true
+        withCredentials: true,
       });
       setCart(response.data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch cart');
-      console.error('Error fetching cart:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addToCart = async (productId, quantity = 1) => {
-    try {
-      setLoading(true);
-      await axios.post('http://localhost:8000/api/cart/add_item/', {
-        product_id: productId,
-        quantity,
-      }, {
-        withCredentials: true
-      });
-      await fetchCart();
-      return true;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add item to cart');
-      console.error('Error adding to cart:', err);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateCartItem = async (productId, quantity) => {
-    try {
-      setLoading(true);
-      await axios.post('http://localhost:8000/api/cart/update_item/', {
-        product_id: productId,
-        quantity,
-      }, {
-        withCredentials: true
-      });
-      await fetchCart();
-      return true;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update cart');
-      console.error('Error updating cart:', err);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeFromCart = async (productId) => {
-    try {
-      setLoading(true);
-      await axios.post('http://localhost:8000/api/cart/update_item/', {
-        product_id: productId,
-        quantity: 0,
-      }, {
-        withCredentials: true
-      });
-      await fetchCart();
-      return true;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove item from cart');
-      console.error('Error removing from cart:', err);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearCart = async () => {
-    try {
-      setLoading(true);
-      await axios.post('http://localhost:8000/api/cart/clear/', {}, {
-        withCredentials: true
-      });
-      await fetchCart();
-      return true;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to clear cart');
-      console.error('Error clearing cart:', err);
-      return false;
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      setCart(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const initializeCart = async () => {
-      await getCSRFToken();
-      await fetchCart();
-    };
-    initializeCart();
-  }, []);
+    if (user) {
+      fetchCart();
+    } else {
+      setCart(null);
+      setLoading(false);
+    }
+  }, [user]);
 
-  const value = {
-    cart,
-    loading,
-    error,
-    fetchCart,
-    addToCart,
-    updateCartItem,
-    removeFromCart,
-    clearCart,
+  const addToCart = async (productId, quantity = 1) => {
+    if (!checkAuth()) return { success: false, requiresAuth: true };
+
+    try {
+      await axios.post(
+        'http://localhost:8000/api/cart/add_item/',
+        { product_id: productId, quantity },
+        { withCredentials: true }
+      );
+      await fetchCart();
+      toast({
+        title: 'Added to Cart',
+        description: 'Item has been added to your cart',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      return { success: true };
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to add item to cart',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return { success: false, error: error.message };
+    }
   };
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  const updateCartItem = async (itemId, quantity) => {
+    if (!checkAuth()) return { success: false, requiresAuth: true };
+
+    try {
+      await axios.post(
+        'http://localhost:8000/api/cart/update_item/',
+        { item_id: itemId, quantity },
+        { withCredentials: true }
+      );
+      await fetchCart();
+      return { success: true };
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update cart',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return { success: false, error: error.message };
+    }
+  };
+
+  const removeFromCart = async (itemId) => {
+    if (!checkAuth()) return { success: false, requiresAuth: true };
+
+    try {
+      await axios.post(
+        'http://localhost:8000/api/cart/remove_item/',
+        { item_id: itemId },
+        { withCredentials: true }
+      );
+      await fetchCart();
+      toast({
+        title: 'Removed from Cart',
+        description: 'Item has been removed from your cart',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      return { success: true };
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to remove item',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return { success: false, error: error.message };
+    }
+  };
+
+  const placeOrder = async (shippingInfo) => {
+    if (!checkAuth()) return { success: false, requiresAuth: true };
+
+    try {
+      const response = await axios.post(
+        'http://localhost:8000/api/cart/place_order/',
+        {
+          ...shippingInfo,
+          user_id: user.id,
+          user_email: user.email,
+        },
+        { withCredentials: true }
+      );
+      await fetchCart();
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Failed to place order',
+      };
+    }
+  };
+
+  return (
+    <CartContext.Provider
+      value={{
+        cart,
+        loading,
+        addToCart,
+        updateCartItem,
+        removeFromCart,
+        placeOrder,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
+};
+
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
 };
 
 export default CartContext; 

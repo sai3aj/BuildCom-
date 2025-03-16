@@ -1,27 +1,30 @@
 from rest_framework import serializers
-from .models import Product, Category, Cart, CartItem, Order, OrderItem
+from .models import Category, Product, Cart, CartItem, Order, OrderItem
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'description', 'created_at']
+        fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'price', 'category', 'category_name', 
-                 'stock', 'image', 'created_at', 'updated_at']
+        fields = '__all__'
+
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    product_id = serializers.IntegerField(write_only=True)
+    product = ProductSerializer()
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'product_id', 'quantity', 'subtotal']
+        fields = ['id', 'product', 'quantity', 'subtotal']
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
@@ -29,7 +32,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'session_id', 'items', 'total', 'created_at', 'updated_at']
+        fields = ['id', 'session_id', 'user_id', 'user_email', 'items', 'total']
 
 class OrderItemSerializer(serializers.ModelSerializer):
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
@@ -43,5 +46,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'full_name', 'phone', 'address', 
-                 'total_amount', 'status', 'items', 'created_at', 'updated_at'] 
+        fields = [
+            'id', 'order_number', 'user_id', 'user_email', 'full_name',
+            'phone', 'address', 'total_amount', 'status', 'items',
+            'created_at', 'updated_at'
+        ] 

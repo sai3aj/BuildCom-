@@ -6,7 +6,7 @@ from django.middleware.csrf import get_token
 from django.http import JsonResponse
 from .models import Product, Category, Cart, CartItem, Order, OrderItem
 from .serializers import (ProductSerializer, CategorySerializer, CartSerializer, 
-                        CartItemSerializer, OrderSerializer)
+                        CartItemSerializer, OrderSerializer, OrderItemSerializer)
 import uuid
 from datetime import datetime
 
@@ -39,140 +39,194 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
-class CartViewSet(viewsets.ModelViewSet):
-    queryset = Cart.objects.all()
-    serializer_class = CartSerializer
+class CartViewSet(viewsets.ViewSet):
+    def get_cart(self, request):
+        user_id = request.query_params.get('user_id')
+        session_id = request.session.get('cart_id')
 
-    def get_or_create_cart(self, session_id):
-        if not session_id:
-            session_id = str(uuid.uuid4())
-        cart, created = Cart.objects.get_or_create(session_id=session_id)
-        return cart, session_id
+        if user_id:
+            # Try to find cart by user_id first
+            cart = Cart.objects.filter(user_id=user_id).first()
+            if cart:
+                return cart
+
+        if session_id:
+            cart = Cart.objects.filter(session_id=session_id).first()
+            if cart:
+                # If user is now logged in, update the cart with user info
+                if user_id and not cart.user_id:
+                    cart.user_id = user_id
+                    cart.save()
+                return cart
+
+        return None
 
     def list(self, request):
-        session_id = request.COOKIES.get('cart_session_id')
-        cart, new_session_id = self.get_or_create_cart(session_id)
-        serializer = self.get_serializer(cart)
-        response = Response(serializer.data)
-        if not session_id:
-            response.set_cookie('cart_session_id', new_session_id)
-        return response
+        cart = self.get_cart(request)
+        if not cart:
+            return Response({'items': []})
+        serializer = CartSerializer(cart)
+        return Response(serializer.data)
 
-    @action(detail=False, methods=['POST'])
+    @action(detail=False, methods=['post'])
     def add_item(self, request):
-        session_id = request.COOKIES.get('cart_session_id')
-        cart, new_session_id = self.get_or_create_cart(session_id)
-        
         product_id = request.data.get('product_id')
         quantity = int(request.data.get('quantity', 1))
-        
+        user_id = request.data.get('user_id')
+
         if not product_id:
             return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         product = get_object_or_404(Product, id=product_id)
         
-        if product.stock < quantity:
-            return Response({'error': 'Not enough stock'}, status=status.HTTP_400_BAD_REQUEST)
-            
+        cart = self.get_cart(request)
+        if not cart:
+            session_id = str(uuid.uuid4())
+            request.session['cart_id'] = session_id
+            cart = Cart.objects.create(
+                session_id=session_id,
+                user_id=user_id
+            )
+
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
             defaults={'quantity': quantity}
         )
-        
+
         if not created:
             cart_item.quantity += quantity
             cart_item.save()
-            
-        serializer = CartSerializer(cart)
-        response = Response(serializer.data)
-        if not session_id:
-            response.set_cookie('cart_session_id', new_session_id)
-        return response
 
-    @action(detail=False, methods=['POST'])
+        serializer = CartSerializer(cart)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
     def update_item(self, request):
-        session_id = request.COOKIES.get('cart_session_id')
-        if not session_id:
-            return Response({'error': 'No cart found'}, status=status.HTTP_404_NOT_FOUND)
-            
-        cart = get_object_or_404(Cart, session_id=session_id)
-        product_id = request.data.get('product_id')
-        quantity = int(request.data.get('quantity', 0))
-        
-        if not product_id:
-            return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
-            
+        item_id = request.data.get('item_id')
+        quantity = request.data.get('quantity')
+        user_id = request.data.get('user_id')
+
+        if not item_id or quantity is None:
+            return Response({'error': 'Item ID and quantity are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cart = self.get_cart(request)
+        if not cart:
+            return Response({'error': 'Cart not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verify cart belongs to user
+        if user_id and cart.user_id and cart.user_id != user_id:
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
-            cart_item = CartItem.objects.get(cart=cart, product_id=product_id)
-            if quantity > 0:
-                if cart_item.product.stock < quantity:
-                    return Response({'error': 'Not enough stock'}, status=status.HTTP_400_BAD_REQUEST)
-                cart_item.quantity = quantity
+            cart_item = CartItem.objects.get(id=item_id, cart=cart)
+            if int(quantity) > 0:
+                cart_item.quantity = int(quantity)
                 cart_item.save()
             else:
                 cart_item.delete()
         except CartItem.DoesNotExist:
-            return Response({'error': 'Item not found in cart'}, status=status.HTTP_404_NOT_FOUND)
-            
+            return Response({'error': 'Item not found'}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = CartSerializer(cart)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['POST'])
-    def place_order(self, request):
-        session_id = request.COOKIES.get('cart_session_id')
-        if not session_id:
-            return Response({'error': 'No cart found'}, status=status.HTTP_404_NOT_FOUND)
+    @action(detail=False, methods=['post'])
+    def remove_item(self, request):
+        item_id = request.data.get('item_id')
+        user_id = request.data.get('user_id')
+        
+        if not item_id:
+            return Response({'error': 'Item ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        cart = get_object_or_404(Cart, session_id=session_id)
-        if not cart.items.exists():
+        cart = self.get_cart(request)
+        if not cart:
+            return Response({'error': 'Cart not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verify cart belongs to user
+        if user_id and cart.user_id and cart.user_id != user_id:
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            cart_item = CartItem.objects.get(id=item_id, cart=cart)
+            cart_item.delete()
+        except CartItem.DoesNotExist:
+            return Response({'error': 'Item not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CartSerializer(cart)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def clear(self, request):
+        user_id = request.data.get('user_id')
+        cart = self.get_cart(request)
+        
+        if cart:
+            # Verify cart belongs to user
+            if user_id and cart.user_id and cart.user_id != user_id:
+                return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+            cart.items.all().delete()
+            
+        return Response({'message': 'Cart cleared'})
+
+    @action(detail=False, methods=['post'])
+    def place_order(self, request):
+        cart = self.get_cart(request)
+        if not cart or not cart.items.exists():
             return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate shipping information
-        full_name = request.data.get('full_name')
-        phone = request.data.get('phone')
-        address = request.data.get('address')
+        # Validate required fields
+        required_fields = ['full_name', 'phone', 'address', 'user_id', 'user_email']
+        for field in required_fields:
+            if not request.data.get(field):
+                return Response({'error': f'{field} is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not all([full_name, phone, address]):
-            return Response({'error': 'Shipping information is incomplete'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
+        # Verify cart belongs to user
+        user_id = request.data.get('user_id')
+        if user_id and cart.user_id and cart.user_id != user_id:
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Create order
-        order = Order.objects.create(
-            order_number=f"ORD-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}",
-            full_name=full_name,
-            phone=phone,
-            address=address,
-            total_amount=cart.total
-        )
-
-        # Create order items and update stock
-        for cart_item in cart.items.all():
-            OrderItem.objects.create(
-                order=order,
-                product=cart_item.product,
-                product_name=cart_item.product.name,
-                product_price=cart_item.product.price,
-                quantity=cart_item.quantity
+        try:
+            # Create order
+            order = Order.objects.create(
+                order_number=f"ORD-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}",
+                user_id=request.data['user_id'],
+                user_email=request.data['user_email'],
+                full_name=request.data['full_name'],
+                phone=request.data['phone'],
+                address=request.data['address'],
+                total_amount=cart.total
             )
-            # Update product stock
-            product = cart_item.product
-            product.stock -= cart_item.quantity
-            product.save()
 
-        # Clear the cart
-        cart.items.all().delete()
+            # Create order items
+            for cart_item in cart.items.all():
+                OrderItem.objects.create(
+                    order=order,
+                    product=cart_item.product,
+                    product_name=cart_item.product.name,
+                    product_price=cart_item.product.price,
+                    quantity=cart_item.quantity
+                )
+                
+                # Update product stock
+                product = cart_item.product
+                product.stock -= cart_item.quantity
+                product.save()
 
-        serializer = OrderSerializer(order)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Clear the cart
+            cart.items.all().delete()
 
-    @action(detail=False, methods=['POST'])
-    def clear(self, request):
-        session_id = request.COOKIES.get('cart_session_id')
-        if not session_id:
-            return Response({'error': 'No cart found'}, status=status.HTTP_404_NOT_FOUND)
-            
-        cart = get_object_or_404(Cart, session_id=session_id)
-        cart.items.all().delete()
-        serializer = CartSerializer(cart)
-        return Response(serializer.data)
+            serializer = OrderSerializer(order)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class OrderViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = OrderSerializer
+    
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id', None)
+        if not user_id:
+            return Order.objects.none()
+        return Order.objects.filter(user_id=user_id).order_by('-created_at')

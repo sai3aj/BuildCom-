@@ -1,17 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet, CategoryViewSet, CartViewSet, csrf
+from . import views
 
 router = DefaultRouter()
-router.register(r'products', ProductViewSet)
-router.register(r'categories', CategoryViewSet)
-router.register(r'cart', CartViewSet, basename='cart')
+router.register(r'products', views.ProductViewSet)
+router.register(r'categories', views.CategoryViewSet)
+router.register(r'cart', views.CartViewSet, basename='cart')
+router.register(r'orders', views.OrderViewSet, basename='orders')
 
 urlpatterns = [
+    path('csrf/', views.csrf, name='csrf'),
     path('', include(router.urls)),
-    path('csrf/', csrf, name='csrf'),
-    path('cart/add_item/', CartViewSet.as_view({'post': 'add_item'}), name='cart-add-item'),
-    path('cart/update_item/', CartViewSet.as_view({'post': 'update_item'}), name='cart-update-item'),
-    path('cart/clear/', CartViewSet.as_view({'post': 'clear'}), name='cart-clear'),
-    path('cart/place_order/', CartViewSet.as_view({'post': 'place_order'}), name='cart-place-order'),
 ] 

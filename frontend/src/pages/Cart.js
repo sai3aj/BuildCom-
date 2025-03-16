@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -9,43 +9,62 @@ import {
   Button,
   Image,
   Divider,
-  useToast,
-  Input,
   FormControl,
   FormLabel,
-  FormErrorMessage,
+  Input,
+  Textarea,
+  useToast,
   Spinner,
-  Alert,
-  AlertIcon,
 } from '@chakra-ui/react';
 import { useCart } from '../context/CartContext';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Cart = () => {
-  const { cart, loading, updateCartItem, removeFromCart, clearCart } = useCart();
-  const [shippingInfo, setShippingInfo] = useState({
+  const { cart, loading, removeFromCart, updateCartItem, placeOrder } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
     address: '',
   });
-  const [errors, setErrors] = useState({});
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const toast = useToast();
-  const navigate = useNavigate();
 
-  const validatePhone = (phone) => {
-    const digits = phone.replace(/\D/g, '');
-    return digits.length >= 10;
-  };
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in or sign up to view your cart',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      navigate('/login');
+    }
+  }, [user, navigate, toast]);
 
-  const handleUpdateQuantity = async (productId, newQuantity) => {
-    if (newQuantity < 1) return;
-    const success = await updateCartItem(productId, newQuantity);
-    if (!success) {
+  if (!user) {
+    return null;
+  }
+
+  const handleQuantityChange = async (itemId, newQuantity) => {
+    try {
+      const success = await updateCartItem(itemId, parseInt(newQuantity));
+      if (!success) {
+        toast({
+          title: 'Error',
+          description: 'Failed to update quantity',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to update quantity',
+        description: error.message,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -53,12 +72,22 @@ const Cart = () => {
     }
   };
 
-  const handleRemoveItem = async (productId) => {
-    const success = await removeFromCart(productId);
-    if (!success) {
+  const handleRemoveItem = async (itemId) => {
+    try {
+      const success = await removeFromCart(itemId);
+      if (!success) {
+        toast({
+          title: 'Error',
+          description: 'Failed to remove item',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to remove item',
+        description: error.message,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -68,46 +97,31 @@ const Cart = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setShippingInfo(prev => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
+  const handlePlaceOrder = async (e) => {
+    e.preventDefault();
     
-    if (!shippingInfo.full_name) {
-      newErrors.full_name = 'Full name is required';
-    }
-    
-    if (!shippingInfo.phone) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!validatePhone(shippingInfo.phone)) {
-      newErrors.phone = 'Phone number must be at least 10 digits';
-    }
-    
-    if (!shippingInfo.address) {
-      newErrors.address = 'Address is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!validateForm()) {
+    if (!user) {
       toast({
-        title: 'Error',
-        description: 'Please fix the errors in the form',
+        title: 'Authentication Required',
+        description: 'Please log in to place an order',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      navigate('/login');
+      return;
+    }
+
+    if (!formData.full_name || !formData.phone || !formData.address) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in all required fields',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -115,37 +129,31 @@ const Cart = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      setIsPlacingOrder(true);
-      const response = await axios.post(
-        'http://localhost:8000/api/cart/place_order/',
-        shippingInfo,
-        { withCredentials: true }
-      );
-
-      // Clear the cart after successful order placement
-      await clearCart();
-
-      toast({
-        title: 'Order Placed!',
-        description: `Order #${response.data.order_number} has been placed successfully. We will contact you soon.`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-
-      setShippingInfo({ full_name: '', phone: '', address: '' });
-      navigate('/products'); // Redirect to products page
+      const result = await placeOrder(formData);
+      if (result.success) {
+        toast({
+          title: 'Order Placed',
+          description: 'Your order has been successfully placed',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        navigate('/orders');
+      } else {
+        throw new Error(result.error || 'Failed to place order');
+      }
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.response?.data?.error || 'Failed to place order',
+        description: error.message,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
-      setIsPlacingOrder(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -157,127 +165,130 @@ const Cart = () => {
     );
   }
 
+  if (!cart?.items?.length) {
+    return (
+      <Container maxW="container.xl" py={8}>
+        <Heading mb={6}>Shopping Cart</Heading>
+        <Text>Your cart is empty</Text>
+      </Container>
+    );
+  }
+
   return (
     <Container maxW="container.xl" py={8}>
-      <Heading mb={8}>Shopping Cart</Heading>
-
-      {(!cart?.items || cart.items.length === 0) ? (
-        <Alert status="info">
-          <AlertIcon />
-          Your cart is empty. Browse our products to add items to your cart.
-        </Alert>
-      ) : (
-        <Box display={{ md: 'flex' }} gap={8}>
-          <VStack flex="2" alignItems="stretch" spacing={4}>
-            {cart.items.map((item) => (
-              <HStack
-                key={item.id}
-                p={4}
-                borderWidth="1px"
-                borderRadius="lg"
-                spacing={4}
-              >
-                <Image
-                  src={item.product.image || 'https://via.placeholder.com/100'}
-                  alt={item.product.name}
-                  boxSize="100px"
-                  objectFit="cover"
-                />
-                <Box flex="1">
+      <Heading mb={6}>Shopping Cart</Heading>
+      <Box display="flex" flexDirection={{ base: 'column', lg: 'row' }} gap={8}>
+        <VStack flex="2" align="stretch" spacing={4}>
+          {cart.items.map((item) => (
+            <Box
+              key={item.id}
+              p={4}
+              borderWidth="1px"
+              borderRadius="lg"
+              shadow="sm"
+            >
+              <HStack spacing={4} align="start">
+                {item.product.image && (
+                  <Image
+                    src={`http://localhost:8000${item.product.image}`}
+                    alt={item.product.name}
+                    boxSize="100px"
+                    objectFit="cover"
+                  />
+                )}
+                <VStack align="start" flex="1">
                   <Text fontWeight="bold">{item.product.name}</Text>
-                  <Text color="gray.600">₹{item.product.price}</Text>
-                </Box>
-                <HStack>
+                  <Text color="gray.600">
+                    Price: ${Number(item.product.price).toFixed(2)}
+                  </Text>
+                  <HStack>
+                    <Text>Quantity:</Text>
+                    <Input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                      min="1"
+                      max={item.product.stock}
+                      width="80px"
+                    />
+                  </HStack>
+                  <Text fontWeight="semibold">
+                    Subtotal: ${(item.quantity * Number(item.product.price)).toFixed(2)}
+                  </Text>
                   <Button
+                    colorScheme="red"
                     size="sm"
-                    onClick={() => handleUpdateQuantity(item.product.id, item.quantity - 1)}
+                    onClick={() => handleRemoveItem(item.id)}
                   >
-                    -
+                    Remove
                   </Button>
-                  <Text>{item.quantity}</Text>
-                  <Button
-                    size="sm"
-                    onClick={() => handleUpdateQuantity(item.product.id, item.quantity + 1)}
-                  >
-                    +
-                  </Button>
-                </HStack>
-                <Button
-                  colorScheme="red"
-                  variant="ghost"
-                  onClick={() => handleRemoveItem(item.product.id)}
-                >
-                  Remove
-                </Button>
-              </HStack>
-            ))}
-          </VStack>
-
-          <Box flex="1">
-            <Box p={6} borderWidth="1px" borderRadius="lg">
-              <Heading size="md" mb={4}>Order Summary</Heading>
-              <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
-                  <Text>Subtotal</Text>
-                  <Text>₹{cart.total}</Text>
-                </HStack>
-                <HStack justify="space-between">
-                  <Text>Shipping</Text>
-                  <Text>₹100</Text>
-                </HStack>
-                <Divider />
-                <HStack justify="space-between" fontWeight="bold">
-                  <Text>Total</Text>
-                  <Text>₹{Number(cart.total) + 100}</Text>
-                </HStack>
-
-                <VStack spacing={4} mt={6} align="stretch">
-                  <FormControl isRequired isInvalid={!!errors.full_name}>
-                    <FormLabel>Full Name</FormLabel>
-                    <Input
-                      name="full_name"
-                      value={shippingInfo.full_name}
-                      onChange={handleInputChange}
-                    />
-                    <FormErrorMessage>{errors.full_name}</FormErrorMessage>
-                  </FormControl>
-                  <FormControl isRequired isInvalid={!!errors.phone}>
-                    <FormLabel>Phone Number</FormLabel>
-                    <Input
-                      name="phone"
-                      value={shippingInfo.phone}
-                      onChange={handleInputChange}
-                      placeholder="Enter at least 10 digits"
-                    />
-                    <FormErrorMessage>{errors.phone}</FormErrorMessage>
-                  </FormControl>
-                  <FormControl isRequired isInvalid={!!errors.address}>
-                    <FormLabel>Delivery Address</FormLabel>
-                    <Input
-                      name="address"
-                      value={shippingInfo.address}
-                      onChange={handleInputChange}
-                    />
-                    <FormErrorMessage>{errors.address}</FormErrorMessage>
-                  </FormControl>
                 </VStack>
+              </HStack>
+            </Box>
+          ))}
+        </VStack>
 
+        <VStack flex="1" align="stretch" spacing={4}>
+          <Box p={6} borderWidth="1px" borderRadius="lg" shadow="sm">
+            <Heading size="md" mb={4}>Order Summary</Heading>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text>Subtotal:</Text>
+                <Text fontWeight="bold">${Number(cart.total).toFixed(2)}</Text>
+              </HStack>
+              <Divider />
+              <HStack justify="space-between">
+                <Text fontWeight="bold">Total:</Text>
+                <Text fontWeight="bold" fontSize="xl" color="green.500">
+                  ${Number(cart.total).toFixed(2)}
+                </Text>
+              </HStack>
+            </VStack>
+          </Box>
+
+          <Box p={6} borderWidth="1px" borderRadius="lg" shadow="sm">
+            <Heading size="md" mb={4}>Shipping Information</Heading>
+            <form onSubmit={handlePlaceOrder}>
+              <VStack spacing={4}>
+                <FormControl isRequired>
+                  <FormLabel>Full Name</FormLabel>
+                  <Input
+                    name="full_name"
+                    value={formData.full_name}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>Phone</FormLabel>
+                  <Input
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>Address</FormLabel>
+                  <Textarea
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
                 <Button
+                  type="submit"
                   colorScheme="blue"
                   size="lg"
                   width="full"
-                  onClick={handlePlaceOrder}
-                  mt={4}
-                  isLoading={isPlacingOrder}
+                  isLoading={isSubmitting}
                   loadingText="Placing Order..."
                 >
-                  Place Order (Cash on Delivery)
+                  Place Order
                 </Button>
               </VStack>
-            </Box>
+            </form>
           </Box>
-        </Box>
-      )}
+        </VStack>
+      </Box>
     </Container>
   );
 };

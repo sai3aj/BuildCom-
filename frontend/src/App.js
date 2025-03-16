@@ -1,26 +1,25 @@
 import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import Products from './pages/Products';
-import Cart from './pages/Cart';
+import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import AppRoutes from './AppRoutes';
+import Navbar from './components/Navbar';
 
 function App() {
   return (
-    <ChakraProvider>
-      <CartProvider>
-        <Router>
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/cart" element={<Cart />} />
-          </Routes>
-        </Router>
-      </CartProvider>
-    </ChakraProvider>
+    <BrowserRouter>
+      <ChakraProvider>
+        <AuthProvider>
+          <CartProvider>
+            <div className="App">
+              <Navbar />
+              <AppRoutes />
+            </div>
+          </CartProvider>
+        </AuthProvider>
+      </ChakraProvider>
+    </BrowserRouter>
   );
 }
 
