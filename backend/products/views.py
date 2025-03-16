@@ -9,12 +9,18 @@ from .serializers import (ProductSerializer, CategorySerializer, CartSerializer,
                         CartItemSerializer, OrderSerializer, OrderItemSerializer)
 import uuid
 from datetime import datetime
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
 
 # Create your views here.
 
 @api_view(['GET'])
+@ensure_csrf_cookie
 def csrf(request):
-    return JsonResponse({'csrfToken': get_token(request)})
+    token = get_token(request)
+    response = JsonResponse({'csrfToken': token})
+    response['X-CSRFToken'] = token
+    return response
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -39,9 +45,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class CartViewSet(viewsets.ViewSet):
     def get_cart(self, request):
-        user_id = request.query_params.get('user_id')
+        user_id = request.query_params.get('user_id') or request.data.get('user_id')
         session_id = request.session.get('cart_id')
 
         if user_id:
@@ -70,36 +77,53 @@ class CartViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def add_item(self, request):
-        product_id = request.data.get('product_id')
-        quantity = int(request.data.get('quantity', 1))
-        user_id = request.data.get('user_id')
+        try:
+            # Print debug information
+            print("Headers:", request.headers)
+            print("CSRF Token:", request.META.get('HTTP_X_CSRFTOKEN'))
+            
+            product_id = request.data.get('product_id')
+            quantity = int(request.data.get('quantity', 1))
+            user_id = request.data.get('user_id')
+            user_email = request.data.get('user_email')
 
-        if not product_id:
-            return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+            if not product_id:
+                return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        product = get_object_or_404(Product, id=product_id)
-        
-        cart = self.get_cart(request)
-        if not cart:
-            session_id = str(uuid.uuid4())
-            request.session['cart_id'] = session_id
-            cart = Cart.objects.create(
-                session_id=session_id,
-                user_id=user_id
+            product = get_object_or_404(Product, id=product_id)
+            
+            cart = self.get_cart(request)
+            if not cart:
+                session_id = str(uuid.uuid4())
+                request.session['cart_id'] = session_id
+                cart = Cart.objects.create(
+                    session_id=session_id,
+                    user_id=user_id,
+                    user_email=user_email
+                )
+            elif user_id and not cart.user_id:
+                cart.user_id = user_id
+                cart.user_email = user_email
+                cart.save()
+
+            cart_item, created = CartItem.objects.get_or_create(
+                cart=cart,
+                product=product,
+                defaults={'quantity': quantity}
             )
 
-        cart_item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            product=product,
-            defaults={'quantity': quantity}
-        )
+            if not created:
+                cart_item.quantity += quantity
+                cart_item.save()
 
-        if not created:
-            cart_item.quantity += quantity
-            cart_item.save()
-
-        serializer = CartSerializer(cart)
-        return Response(serializer.data)
+            serializer = CartSerializer(cart)
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"Error in add_item: {str(e)}")
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['post'])
     def update_item(self, request):

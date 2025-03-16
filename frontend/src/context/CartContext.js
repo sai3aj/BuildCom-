@@ -16,6 +16,35 @@ export const CartProvider = ({ children }) => {
   const { user } = useAuth();
   const toast = useToast();
 
+  // Initialize cart and fetch CSRF token
+  useEffect(() => {
+    const initializeCart = async () => {
+      try {
+        // Get CSRF token first
+        const csrfResponse = await axios.get('http://localhost:8000/api/csrf/', {
+          withCredentials: true
+        });
+        
+        // Set CSRF token in axios defaults
+        const csrfToken = csrfResponse.data.csrfToken;
+        axios.defaults.headers.common['X-CSRFToken'] = csrfToken;
+
+        // If user is logged in, fetch their cart
+        if (user) {
+          await fetchCart();
+        } else {
+          setCart(null);
+        }
+      } catch (error) {
+        console.error('Error initializing cart:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeCart();
+  }, [user]);
+
   const checkAuth = () => {
     if (!user) {
       toast({
@@ -33,35 +62,46 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     try {
       const response = await axios.get('http://localhost:8000/api/cart/', {
-        withCredentials: true,
+        params: {
+          user_id: user?.id
+        },
+        withCredentials: true
       });
       setCart(response.data);
     } catch (error) {
       console.error('Error fetching cart:', error);
       setCart(null);
-    } finally {
-      setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (user) {
-      fetchCart();
-    } else {
-      setCart(null);
-      setLoading(false);
-    }
-  }, [user]);
 
   const addToCart = async (productId, quantity = 1) => {
     if (!checkAuth()) return { success: false, requiresAuth: true };
 
     try {
-      await axios.post(
+      // Get CSRF token before making the request
+      const csrfResponse = await axios.get('http://localhost:8000/api/csrf/', {
+        withCredentials: true
+      });
+      
+      const csrfToken = csrfResponse.data.csrfToken;
+      
+      const response = await axios.post(
         'http://localhost:8000/api/cart/add_item/',
-        { product_id: productId, quantity },
-        { withCredentials: true }
+        { 
+          product_id: productId, 
+          quantity,
+          user_id: user?.id,
+          user_email: user?.email 
+        },
+        { 
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          }
+        }
       );
+      
       await fetchCart();
       toast({
         title: 'Added to Cart',
@@ -70,8 +110,9 @@ export const CartProvider = ({ children }) => {
         duration: 3000,
         isClosable: true,
       });
-      return { success: true };
+      return { success: true, data: response.data };
     } catch (error) {
+      console.error('Error adding to cart:', error.response || error);
       toast({
         title: 'Error',
         description: error.response?.data?.error || 'Failed to add item to cart',
@@ -89,7 +130,11 @@ export const CartProvider = ({ children }) => {
     try {
       await axios.post(
         'http://localhost:8000/api/cart/update_item/',
-        { item_id: itemId, quantity },
+        { 
+          item_id: itemId, 
+          quantity,
+          user_id: user.id 
+        },
         { withCredentials: true }
       );
       await fetchCart();
@@ -112,7 +157,10 @@ export const CartProvider = ({ children }) => {
     try {
       await axios.post(
         'http://localhost:8000/api/cart/remove_item/',
-        { item_id: itemId },
+        { 
+          item_id: itemId,
+          user_id: user.id 
+        },
         { withCredentials: true }
       );
       await fetchCart();

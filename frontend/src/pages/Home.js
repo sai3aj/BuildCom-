@@ -1,105 +1,222 @@
 import React from 'react';
-import { Box, Container, Heading, Text, Button, SimpleGrid, Image } from '@chakra-ui/react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+  Box,
+  Container,
+  Heading,
+  Text,
+  Button,
+  VStack,
+  HStack,
+  Image,
+  useColorModeValue,
+  Icon,
+  SimpleGrid,
+  Flex,
+} from '@chakra-ui/react';
+import { useNavigate } from 'react-router-dom';
+import { FaTruck, FaTools, FaHardHat, FaHome } from 'react-icons/fa';
+
+const MotionBox = motion(Box);
+const MotionFlex = motion(Flex);
+
+const FeatureCard = ({ icon, title, description }) => {
+  return (
+    <MotionBox
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      p={6}
+      bg={useColorModeValue('white', 'gray.700')}
+      rounded="xl"
+      shadow="lg"
+      textAlign="center"
+      _hover={{
+        transform: 'translateY(-5px)',
+        shadow: 'xl',
+        transition: 'all 0.2s ease-in-out',
+      }}
+    >
+      <Icon as={icon} w={10} h={10} color="blue.500" mb={4} />
+      <Heading size="md" mb={2}>
+        {title}
+      </Heading>
+      <Text color={useColorModeValue('gray.600', 'gray.300')}>{description}</Text>
+    </MotionBox>
+  );
+};
 
 const Home = () => {
+  const navigate = useNavigate();
+  const bgGradient = useColorModeValue(
+    'linear(to-r, blue.100, purple.100)',
+    'linear(to-r, blue.900, purple.900)'
+  );
+
   return (
     <Box>
       {/* Hero Section */}
       <Box
-        bgImage="url('https://images.unsplash.com/photo-1541888946425-d81bb19240f5?ixlib=rb-4.0.3')"
-        bgPosition="center"
-        bgRepeat="no-repeat"
-        bgSize="cover"
-        h="500px"
+        bg={bgGradient}
+        pt={{ base: 20, md: 28 }}
+        pb={{ base: 16, md: 24 }}
         position="relative"
+        overflow="hidden"
       >
-        <Box
+        {/* Animated Background Elements */}
+        <MotionBox
           position="absolute"
-          top="0"
-          left="0"
-          right="0"
-          bottom="0"
-          bg="rgba(0, 0, 0, 0.6)"
+          top="-10%"
+          left="-5%"
+          w="120%"
+          h="120%"
+          bgGradient="radial(circle at top left, blue.200, transparent 60%)"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.3 }}
+          transition={{ duration: 2 }}
         />
-        <Container maxW="container.xl" h="100%" position="relative">
-          <Box
-            display="flex"
-            flexDirection="column"
-            justifyContent="center"
-            alignItems="flex-start"
-            h="100%"
-            color="white"
+        <MotionBox
+          position="absolute"
+          bottom="-10%"
+          right="-5%"
+          w="120%"
+          h="120%"
+          bgGradient="radial(circle at bottom right, purple.200, transparent 60%)"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.3 }}
+          transition={{ duration: 2, delay: 0.5 }}
+        />
+
+        <Container maxW="container.xl" position="relative">
+          <MotionFlex
+            direction={{ base: 'column', md: 'row' }}
+            align="center"
+            justify="space-between"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
           >
-            <Heading size="2xl" mb={4}>
-              Quality Building Materials
-            </Heading>
-            <Text fontSize="xl" mb={6} maxW="lg">
-              Your one-stop shop for all construction materials. We offer the best prices
-              and quality products for your building needs.
-            </Text>
-            <Link to="/products">
-              <Button colorScheme="blue" size="lg">
-                Shop Now
-              </Button>
-            </Link>
-          </Box>
+            <VStack
+              align={{ base: 'center', md: 'start' }}
+              spacing={6}
+              maxW={{ base: 'full', md: '50%' }}
+              textAlign={{ base: 'center', md: 'left' }}
+            >
+              <Heading
+                as="h1"
+                size="2xl"
+                fontWeight="bold"
+                color={useColorModeValue('gray.800', 'white')}
+                lineHeight="shorter"
+              >
+                Your One-Stop Shop for Construction Materials
+              </Heading>
+              <Text
+                fontSize="xl"
+                color={useColorModeValue('gray.600', 'gray.300')}
+              >
+                Quality building materials delivered to your doorstep. Build with confidence using our premium products.
+              </Text>
+              <HStack spacing={4}>
+                <Button
+                  size="lg"
+                  colorScheme="blue"
+                  onClick={() => navigate('/products')}
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'lg',
+                  }}
+                >
+                  Shop Now
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate('/register')}
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'lg',
+                  }}
+                >
+                  Join Us
+                </Button>
+              </HStack>
+            </VStack>
+
+            <MotionBox
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              display={{ base: 'none', md: 'block' }}
+              w={{ base: 'full', md: '40%' }}
+            >
+              <Image
+                src="/hero-image.png"
+                alt="Construction Materials"
+                fallbackSrc="https://static.vecteezy.com/system/resources/thumbnails/028/642/325/small_2x/professional-engineer-in-protective-helmet-and-blueprints-paper-at-house-building-construction-site-photo.jpg"
+                rounded="lg"
+                shadow="2xl"
+              />
+            </MotionBox>
+          </MotionFlex>
         </Container>
       </Box>
 
-      {/* Featured Categories */}
-      <Container maxW="container.xl" py={16}>
-        <Heading mb={8} textAlign="center">Featured Categories</Heading>
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={8}>
-          {categories.map((category) => (
-            <Box
-              key={category.name}
-              bg="white"
-              p={6}
-              borderRadius="lg"
-              boxShadow="md"
-              textAlign="center"
-            >
-              <Image
-                src={category.image}
-                alt={category.name}
-                h="150px"
-                w="100%"
-                objectFit="cover"
-                borderRadius="md"
-                mb={4}
-              />
-              <Heading size="md" mb={2}>{category.name}</Heading>
-              <Text color="gray.600">{category.description}</Text>
-            </Box>
-          ))}
+      {/* Features Section */}
+      <Container maxW="container.xl" py={20}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={10}>
+          <FeatureCard
+            icon={FaTruck}
+            title="Fast Delivery"
+            description="Quick and reliable delivery service to your construction site"
+          />
+          <FeatureCard
+            icon={FaTools}
+            title="Quality Tools"
+            description="Premium construction tools and equipment"
+          />
+          <FeatureCard
+            icon={FaHardHat}
+            title="Expert Support"
+            description="Professional guidance for your construction needs"
+          />
+          <FeatureCard
+            icon={FaHome}
+            title="Complete Solutions"
+            description="Everything you need for your construction project"
+          />
         </SimpleGrid>
       </Container>
+
+      {/* Call to Action Section */}
+      <Box bg={useColorModeValue('gray.100', 'gray.700')} py={16}>
+        <Container maxW="container.xl">
+          <MotionBox
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            textAlign="center"
+          >
+            <Heading mb={4}>Ready to Start Your Project?</Heading>
+            <Text fontSize="lg" mb={8}>
+              Browse our extensive collection of construction materials and get started today.
+            </Text>
+            <Button
+              size="lg"
+              colorScheme="blue"
+              onClick={() => navigate('/products')}
+              _hover={{
+                transform: 'translateY(-2px)',
+                boxShadow: 'lg',
+              }}
+            >
+              View Products
+            </Button>
+          </MotionBox>
+        </Container>
+      </Box>
     </Box>
   );
 };
-
-const categories = [
-  {
-    name: 'Cement',
-    description: 'High-quality cement for all construction needs',
-    image: 'https://images.unsplash.com/photo-1518228684816-9135c15af8a9?ixlib=rb-4.0.3',
-  },
-  {
-    name: 'Steel',
-    description: 'Premium steel bars and rods',
-    image: 'https://images.unsplash.com/photo-1535813547-99c456a41d4a?ixlib=rb-4.0.3',
-  },
-  {
-    name: 'Bricks',
-    description: 'Durable bricks and blocks',
-    image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?ixlib=rb-4.0.3',
-  },
-  {
-    name: 'Tools',
-    description: 'Essential construction tools',
-    image: 'https://images.unsplash.com/photo-1581147036324-c1c78587ab72?ixlib=rb-4.0.3',
-  },
-];
 
 export default Home; 

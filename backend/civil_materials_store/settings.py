@@ -44,9 +44,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -127,20 +127,19 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = False
+# CORS settings
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
-CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
-CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
-    'DELETE',
     'GET',
-    'OPTIONS',
-    'PATCH',
     'POST',
     'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS'
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -155,14 +154,19 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Session settings
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+# CSRF settings
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False
 CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
-CSRF_USE_SESSIONS = True
+
+# Session settings
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
