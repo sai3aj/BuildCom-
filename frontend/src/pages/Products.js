@@ -1,22 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Box,
   Container,
   SimpleGrid,
-  Box,
   Image,
   Text,
   Button,
   VStack,
   HStack,
-  Select,
   Heading,
+  Select,
+  Input,
+  InputGroup,
+  InputLeftElement,
   useToast,
   Spinner,
 } from '@chakra-ui/react';
+import { SearchIcon } from '@chakra-ui/icons';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+// Styled motion components
+const MotionBox = motion(Box);
+const MotionContainer = motion(Container);
+const MotionSimpleGrid = motion(SimpleGrid);
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -27,6 +37,7 @@ const Products = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -85,73 +96,127 @@ const Products = () => {
 
   if (loading) {
     return (
-      <Container maxW="container.xl" centerContent py={8}>
+      <MotionContainer
+        maxW="container.xl"
+        py={8}
+        centerContent
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
         <Spinner size="xl" />
-      </Container>
+      </MotionContainer>
     );
   }
 
   return (
-    <Container maxW="container.xl" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box>
-          <Heading mb={4}>Our Products</Heading>
-          <Select
-            placeholder="All Categories"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            maxW="300px"
-          >
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
-        </Box>
-
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-          {filteredProducts.map((product) => (
-            <Box
-              key={product.id}
-              borderWidth="1px"
-              borderRadius="lg"
-              overflow="hidden"
-              shadow="sm"
+    <MotionContainer
+      maxW="container.xl"
+      py={8}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <VStack spacing={6} align="stretch">
+        <HStack justify="space-between" wrap="wrap" spacing={4}>
+          <Heading size="lg">Products</Heading>
+          <HStack spacing={4}>
+            <Select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              placeholder="All Categories"
+              w={{ base: "full", md: "200px" }}
             >
-              <Image
-                src={product.image ? `http://localhost:8000${product.image}` : 'https://via.placeholder.com/200'}
-                alt={product.name}
-                height="200px"
-                width="100%"
-                objectFit="cover"
-                fallback={<Box height="200px" bg="gray.100" />}
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+            <InputGroup w={{ base: "full", md: "300px" }}>
+              <InputLeftElement pointerEvents="none">
+                <SearchIcon color="gray.300" />
+              </InputLeftElement>
+              <Input
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <VStack p={4} align="start" spacing={2}>
-                <Heading size="md">{product.name}</Heading>
-                <Text color="gray.600">{product.description}</Text>
-                <HStack justify="space-between" width="100%">
-                  <Text fontWeight="bold" fontSize="xl">
-                    ${Number(product.price).toFixed(2)}
-                  </Text>
-                  <Text color={product.stock > 0 ? 'green.500' : 'red.500'}>
-                    {product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
-                  </Text>
-                </HStack>
-                <Button
-                  colorScheme="blue"
-                  width="100%"
-                  onClick={() => handleAddToCart(product.id)}
-                  isDisabled={product.stock === 0}
-                >
-                  Add to Cart
-                </Button>
-              </VStack>
-            </Box>
-          ))}
-        </SimpleGrid>
+            </InputGroup>
+          </HStack>
+        </HStack>
+
+        <AnimatePresence>
+          <MotionSimpleGrid
+            columns={{ base: 1, sm: 2, md: 3, lg: 4 }}
+            spacing={6}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            {filteredProducts.map((product) => (
+              <MotionBox
+                key={product.id}
+                borderWidth="1px"
+                borderRadius="lg"
+                overflow="hidden"
+                shadow="sm"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ 
+                  scale: 1.03,
+                  shadow: "lg",
+                  transition: { duration: 0.2 }
+                }}
+              >
+                <Box position="relative" paddingTop="100%">
+                  <Image
+                    as={motion.img}
+                    src={`http://localhost:8000${product.image}`}
+                    alt={product.name}
+                    position="absolute"
+                    top="0"
+                    left="0"
+                    w="100%"
+                    h="100%"
+                    objectFit="cover"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </Box>
+                <Box p={4}>
+                  <VStack align="start" spacing={2}>
+                    <Heading size="md" noOfLines={2}>
+                      {product.name}
+                    </Heading>
+                    <Text color="gray.600" noOfLines={2}>
+                      {product.description}
+                    </Text>
+                    <Text color="blue.600" fontSize="xl" fontWeight="bold">
+                      ${Number(product.price).toFixed(2)}
+                    </Text>
+                    <Text color={product.stock > 0 ? "green.500" : "red.500"}>
+                      {product.stock > 0 ? `In Stock (${product.stock})` : "Out of Stock"}
+                    </Text>
+                    <Button
+                      as={motion.button}
+                      colorScheme="blue"
+                      width="full"
+                      onClick={() => handleAddToCart(product.id)}
+                      isDisabled={product.stock === 0}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Add to Cart
+                    </Button>
+                  </VStack>
+                </Box>
+              </MotionBox>
+            ))}
+          </MotionSimpleGrid>
+        </AnimatePresence>
       </VStack>
-    </Container>
+    </MotionContainer>
   );
 };
 

@@ -16,9 +16,14 @@ import {
   useToast,
   Spinner,
 } from '@chakra-ui/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+// Styled motion components
+const MotionBox = motion(Box);
+const MotionContainer = motion(Container);
 
 const Cart = () => {
   const { cart, loading, removeFromCart, updateCartItem, placeOrder } = useCart();
@@ -159,77 +164,117 @@ const Cart = () => {
 
   if (loading) {
     return (
-      <Container maxW="container.xl" py={8} centerContent>
+      <MotionContainer
+        maxW="container.xl"
+        py={8}
+        centerContent
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
         <Spinner size="xl" />
-      </Container>
+      </MotionContainer>
     );
   }
 
   if (!cart?.items?.length) {
     return (
-      <Container maxW="container.xl" py={8}>
+      <MotionContainer
+        maxW="container.xl"
+        py={8}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+      >
         <Heading mb={6}>Shopping Cart</Heading>
         <Text>Your cart is empty</Text>
-      </Container>
+      </MotionContainer>
     );
   }
 
   return (
-    <Container maxW="container.xl" py={8}>
+    <MotionContainer
+      maxW="container.xl"
+      py={8}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
       <Heading mb={6}>Shopping Cart</Heading>
       <Box display="flex" flexDirection={{ base: 'column', lg: 'row' }} gap={8}>
         <VStack flex="2" align="stretch" spacing={4}>
-          {cart.items.map((item) => (
-            <Box
-              key={item.id}
-              p={4}
-              borderWidth="1px"
-              borderRadius="lg"
-              shadow="sm"
-            >
-              <HStack spacing={4} align="start">
-                {item.product.image && (
-                  <Image
-                    src={`http://localhost:8000${item.product.image}`}
-                    alt={item.product.name}
-                    boxSize="100px"
-                    objectFit="cover"
-                  />
-                )}
-                <VStack align="start" flex="1">
-                  <Text fontWeight="bold">{item.product.name}</Text>
-                  <Text color="gray.600">
-                    Price: ${Number(item.product.price).toFixed(2)}
-                  </Text>
-                  <HStack>
-                    <Text>Quantity:</Text>
-                    <Input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                      min="1"
-                      max={item.product.stock}
-                      width="80px"
+          <AnimatePresence>
+            {cart.items.map((item) => (
+              <MotionBox
+                key={item.id}
+                p={4}
+                borderWidth="1px"
+                borderRadius="lg"
+                shadow="sm"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <HStack spacing={4} align="start">
+                  {item.product.image && (
+                    <Image
+                      as={motion.img}
+                      src={`http://localhost:8000${item.product.image}`}
+                      alt={item.product.name}
+                      boxSize="100px"
+                      objectFit="cover"
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.2 }}
                     />
-                  </HStack>
-                  <Text fontWeight="semibold">
-                    Subtotal: ${(item.quantity * Number(item.product.price)).toFixed(2)}
-                  </Text>
-                  <Button
-                    colorScheme="red"
-                    size="sm"
-                    onClick={() => handleRemoveItem(item.id)}
-                  >
-                    Remove
-                  </Button>
-                </VStack>
-              </HStack>
-            </Box>
-          ))}
+                  )}
+                  <VStack align="start" flex="1">
+                    <Text fontWeight="bold">{item.product.name}</Text>
+                    <Text color="gray.600">
+                      Price: ${Number(item.product.price).toFixed(2)}
+                    </Text>
+                    <HStack>
+                      <Text>Quantity:</Text>
+                      <Input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                        min="1"
+                        max={item.product.stock}
+                        width="80px"
+                      />
+                    </HStack>
+                    <Text fontWeight="semibold">
+                      Subtotal: ${(item.quantity * Number(item.product.price)).toFixed(2)}
+                    </Text>
+                    <Button
+                      as={motion.button}
+                      colorScheme="red"
+                      size="sm"
+                      onClick={() => handleRemoveItem(item.id)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Remove
+                    </Button>
+                  </VStack>
+                </HStack>
+              </MotionBox>
+            ))}
+          </AnimatePresence>
         </VStack>
 
         <VStack flex="1" align="stretch" spacing={4}>
-          <Box p={6} borderWidth="1px" borderRadius="lg" shadow="sm">
+          <MotionBox
+            p={6}
+            borderWidth="1px"
+            borderRadius="lg"
+            shadow="sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ boxShadow: "lg" }}
+          >
             <Heading size="md" mb={4}>Order Summary</Heading>
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
@@ -249,9 +294,17 @@ const Cart = () => {
                 </Text>
               </Box>
             </VStack>
-          </Box>
+          </MotionBox>
 
-          <Box p={6} borderWidth="1px" borderRadius="lg" shadow="sm">
+          <MotionBox
+            p={6}
+            borderWidth="1px"
+            borderRadius="lg"
+            shadow="sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ boxShadow: "lg" }}
+          >
             <Heading size="md" mb={4}>Shipping Information</Heading>
             <form onSubmit={handlePlaceOrder}>
               <VStack spacing={4}>
@@ -280,21 +333,24 @@ const Cart = () => {
                   />
                 </FormControl>
                 <Button
+                  as={motion.button}
                   type="submit"
                   colorScheme="blue"
                   size="lg"
                   width="full"
                   isLoading={isSubmitting}
                   loadingText="Placing Order..."
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   Place Order
                 </Button>
               </VStack>
             </form>
-          </Box>
+          </MotionBox>
         </VStack>
       </Box>
-    </Container>
+    </MotionContainer>
   );
 };
 
