@@ -232,7 +232,7 @@ const Cart = () => {
                   <VStack align="start" flex="1">
                     <Text fontWeight="bold">{item.product.name}</Text>
                     <Text color="gray.600">
-                      Price: ${Number(item.product.price).toFixed(2)}
+                      Price: ₹{Number(item.product.price).toFixed(2)}
                     </Text>
                     <HStack>
                       <Text>Quantity:</Text>
@@ -246,7 +246,7 @@ const Cart = () => {
                       />
                     </HStack>
                     <Text fontWeight="semibold">
-                      Subtotal: ${(item.quantity * Number(item.product.price)).toFixed(2)}
+                      Subtotal: ₹{(item.quantity * Number(item.product.price)).toFixed(2)}
                     </Text>
                     <Button
                       as={motion.button}
@@ -281,13 +281,13 @@ const Cart = () => {
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
                 <Text>Subtotal:</Text>
-                <Text fontWeight="bold">${Number(cart.total).toFixed(2)}</Text>
+                <Text fontWeight="bold">₹{Number(cart.total).toFixed(2)}</Text>
               </HStack>
               <Divider />
               <HStack justify="space-between">
                 <Text fontWeight="bold">Total:</Text>
                 <Text fontWeight="bold" fontSize="xl" color="green.500">
-                  ${Number(cart.total).toFixed(2)}
+                  ₹{Number(cart.total).toFixed(2)}
                 </Text>
               </HStack>
               <Box mt={2} p={3} bg="gray.50" borderRadius="md">

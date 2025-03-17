@@ -156,9 +156,9 @@ const Orders = () => {
                         {order.items.map((item) => (
                           <Tr key={item.id}>
                             <Td>{item.product_name}</Td>
-                            <Td isNumeric>${Number(item.product_price).toFixed(2)}</Td>
+                            <Td isNumeric>₹{Number(item.product_price).toFixed(2)}</Td>
                             <Td isNumeric>{item.quantity}</Td>
-                            <Td isNumeric>${Number(item.subtotal).toFixed(2)}</Td>
+                            <Td isNumeric>₹{Number(item.subtotal).toFixed(2)}</Td>
                           </Tr>
                         ))}
                         <Tr>
@@ -166,7 +166,7 @@ const Orders = () => {
                             Total
                           </Td>
                           <Td isNumeric fontWeight="bold">
-                            ${Number(order.total_amount).toFixed(2)}
+                            ₹{Number(order.total_amount).toFixed(2)}
                           </Td>
                         </Tr>
                       </Tbody>

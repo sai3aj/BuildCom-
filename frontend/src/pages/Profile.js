@@ -129,7 +129,7 @@ const Profile = () => {
                       <Tr key={order.order_number}>
                         <Td>{order.order_number}</Td>
                         <Td>{new Date(order.created_at).toLocaleDateString()}</Td>
-                        <Td>₹{order.total_amount}</Td>
+                        <Td>₹{Number(order.total_amount).toFixed(2)}</Td>
                         <Td>
                           <Badge colorScheme={getStatusColor(order.status)}>
                             {order.status}

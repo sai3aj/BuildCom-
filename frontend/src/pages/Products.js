@@ -199,7 +199,7 @@ const Products = () => {
                       {product.description}
                     </Text>
                     <Text color="blue.600" fontSize="xl" fontWeight="bold">
-                      ${Number(product.price).toFixed(2)}
+                      ₹{Number(product.price).toFixed(2)}
                     </Text>
                     <Text color={product.stock > 0 ? "green.500" : "red.500"}>
                       {product.stock > 0 ? `In Stock (${product.stock})` : "Out of Stock"}
