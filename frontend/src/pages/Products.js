@@ -160,12 +160,18 @@ const Products = () => {
                 borderWidth="1px"
                 borderRadius="lg"
                 overflow="hidden"
-                shadow="sm"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ 
+                  opacity: 0, 
+                  scale: 0.9,
+                  boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)"
+                }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: 1
+                }}
                 whileHover={{ 
                   scale: 1.03,
-                  shadow: "lg",
+                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
                   transition: { duration: 0.2 }
                 }}
               >

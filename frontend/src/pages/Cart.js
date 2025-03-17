@@ -270,10 +270,12 @@ const Cart = () => {
             p={6}
             borderWidth="1px"
             borderRadius="lg"
-            shadow="sm"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 20, boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ boxShadow: "lg" }}
+            whileHover={{ 
+              boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+              transition: { duration: 0.2 }
+            }}
           >
             <Heading size="md" mb={4}>Order Summary</Heading>
             <VStack align="stretch" spacing={3}>
@@ -300,10 +302,12 @@ const Cart = () => {
             p={6}
             borderWidth="1px"
             borderRadius="lg"
-            shadow="sm"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 20, boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ boxShadow: "lg" }}
+            whileHover={{ 
+              boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+              transition: { duration: 0.2 }
+            }}
           >
             <Heading size="md" mb={4}>Shipping Information</Heading>
             <form onSubmit={handlePlaceOrder}>
