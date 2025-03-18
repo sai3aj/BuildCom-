@@ -56,6 +56,7 @@ const Navbar = () => {
             <NavLink to="/">Home</NavLink>
             <NavLink to="/products">Products</NavLink>
             {user && <NavLink to="/orders">Orders</NavLink>}
+            <NavLink to="/contact">Contact</NavLink>
             <NavLink to="/cart">
               Cart {loading ? <Spinner size="xs" ml={1} /> : cartItemCount > 0 && `(${cartItemCount})`}
             </NavLink>
@@ -122,6 +123,7 @@ const Navbar = () => {
             <NavLink to="/">Home</NavLink>
             <NavLink to="/products">Products</NavLink>
             {user && <NavLink to="/orders">Orders</NavLink>}
+            <NavLink to="/contact">Contact</NavLink>
             <NavLink to="/cart">
               Cart {loading ? <Spinner size="xs" ml={1} /> : cartItemCount > 0 && `(${cartItemCount})`}
             </NavLink>

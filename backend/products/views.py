@@ -5,9 +5,10 @@ from rest_framework.decorators import action, api_view
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
 from django.db.models import Q
-from .models import Product, Category, Cart, CartItem, Order, OrderItem, ProductImage
+from .models import Product, Category, Cart, CartItem, Order, OrderItem, ProductImage, ContactSubmission
 from .serializers import (ProductSerializer, CategorySerializer, CartSerializer, 
-                        CartItemSerializer, OrderSerializer, OrderItemSerializer, ProductImageSerializer)
+                        CartItemSerializer, OrderSerializer, OrderItemSerializer, 
+                        ProductImageSerializer, ContactSubmissionSerializer)
 import uuid
 from datetime import datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -331,3 +332,19 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         if not user_id:
             return Order.objects.none()
         return Order.objects.filter(user_id=user_id).order_by('-created_at')
+
+class ContactSubmissionViewSet(viewsets.ModelViewSet):
+    queryset = ContactSubmission.objects.all()
+    serializer_class = ContactSubmissionSerializer
+    http_method_names = ['post', 'head']  # Only allow POST requests for submissions
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {"success": True, "message": "Thank you for your message. We'll get back to you soon."},
+            status=status.HTTP_201_CREATED, 
+            headers=headers
+        )

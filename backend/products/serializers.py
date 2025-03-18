@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, Cart, CartItem, Order, OrderItem, ProductImage
+from .models import Category, Product, Cart, CartItem, Order, OrderItem, ProductImage, ContactSubmission
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -63,4 +63,15 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'user_id', 'user_email', 'full_name',
             'phone', 'address', 'total_amount', 'status', 'items',
             'created_at', 'updated_at'
-        ] 
+        ]
+
+class ContactSubmissionSerializer(serializers.ModelSerializer):
+    subject_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ContactSubmission
+        fields = ['id', 'name', 'email', 'phone', 'subject', 'subject_display', 'message', 'created_at']
+        read_only_fields = ['created_at']
+        
+    def get_subject_display(self, obj):
+        return obj.get_subject_display() 

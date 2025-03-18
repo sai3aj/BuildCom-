@@ -7,6 +7,7 @@ router.register(r'products', views.ProductViewSet)
 router.register(r'categories', views.CategoryViewSet)
 router.register(r'cart', views.CartViewSet, basename='cart')
 router.register(r'orders', views.OrderViewSet, basename='orders')
+router.register(r'contact', views.ContactSubmissionViewSet, basename='contact')
 
 urlpatterns = [
     path('csrf/', views.csrf, name='csrf'),
