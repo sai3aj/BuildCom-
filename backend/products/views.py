@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
-from .models import Product, Category, Cart, CartItem, Order, OrderItem
+from django.db.models import Q
+from .models import Product, Category, Cart, CartItem, Order, OrderItem, ProductImage
 from .serializers import (ProductSerializer, CategorySerializer, CartSerializer, 
-                        CartItemSerializer, OrderSerializer, OrderItemSerializer)
+                        CartItemSerializer, OrderSerializer, OrderItemSerializer, ProductImageSerializer)
 import uuid
 from datetime import datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -28,6 +29,57 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
+    def get_queryset(self):
+        queryset = Product.objects.all()
+        search = self.request.query_params.get('search', None)
+        category = self.request.query_params.get('category', None)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | 
+                Q(description__icontains=search)
+            )
+            
+        if category:
+            queryset = queryset.filter(category=category)
+            
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        images = request.FILES.getlist('images')
+        main_image = request.FILES.get('image')
+        
+        # Create product with main image
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        product = serializer.save()
+        
+        # Handle additional images
+        for img in images:
+            ProductImage.objects.create(product=product, image=img)
+        
+        # Return the updated product with all images
+        updated_serializer = self.get_serializer(product)
+        return Response(updated_serializer.data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        images = request.FILES.getlist('images')
+        
+        # Update the main product
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # Add any new additional images
+        for img in images:
+            ProductImage.objects.create(product=instance, image=img)
+        
+        # Return the updated product with all images
+        updated_serializer = self.get_serializer(instance)
+        return Response(updated_serializer.data)
+
     @action(detail=False, methods=['GET'])
     def by_category(self, request):
         category_id = request.query_params.get('category_id', None)
@@ -40,6 +92,37 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'])
     def in_stock(self, request):
         products = Product.objects.filter(stock__gt=0)
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
+        
+    @action(detail=True, methods=['DELETE'])
+    def remove_image(self, request, pk=None):
+        image_id = request.query_params.get('image_id')
+        if not image_id:
+            return Response({'error': 'Image ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            product = self.get_object()
+            image = ProductImage.objects.get(id=image_id, product=product)
+            image.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProductImage.DoesNotExist:
+            return Response({'error': 'Image not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['GET'])
+    def search(self, request):
+        """
+        Search for products by name or description.
+        """
+        search_query = request.query_params.get('q', '')
+        if not search_query:
+            return Response({'error': 'No search query provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        products = self.get_queryset().filter(
+            Q(name__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+        
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 

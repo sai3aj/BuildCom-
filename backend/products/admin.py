@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Product, Category, Order, OrderItem, Cart, CartItem
+from .models import Product, Category, Order, OrderItem, Cart, CartItem, ProductImage
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
@@ -10,6 +10,10 @@ class OrderItemInline(admin.TabularInline):
 
     def has_add_permission(self, request, obj=None):
         return False
+
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -21,6 +25,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'category', 'display_price', 'stock')
     list_filter = ('category',)
     search_fields = ('name', 'description')
+    inlines = [ProductImageInline]
 
     def display_price(self, obj):
         return f'₹{obj.price}'
